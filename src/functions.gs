@@ -1,13 +1,14 @@
 function categorizeFiles(config, option){
   var configFolders = config.getParents();
   if(!configFolders.hasNext())
-    console.log('예외 발생. 앱 종료');
+    console.log('config 파일에 연결된 부모 폴더가 없음. 앱 종료');
   var folder = configFolders.next();
   var folderID = folder.getId();
   var targetFolder;
   var targetFolderID;
   var result = 0;
   var configID = config.getId();
+  var i = 0;
   
   var configSpread = SpreadsheetApp.openById(config.getId());
   var fileList;
@@ -19,22 +20,17 @@ function categorizeFiles(config, option){
   var lengthOfCategoryData = categoryData.length;
   for(i=0; i<lengthOfCategoryData; i++)
   {
+    var currTime = (new Date()).getTime();
+    console.log(`현재 실행으로부터 ${(currTime - startTime) / 1000}초 지남.`);
     if(categoryData[i][0] == 'etc')
-      isEtcFolder = i+1;
-    try
     {
-      targetFolder = DriveApp.getFolderById(categoryData[i][1]);
-      targetFolderID = targetFolder.getId();
-      if(targetFolderID == null || targetFolderID == undefined)       // 검색어에 해당하는 폴더 ID가 없으면 직접 만듦. 스프레드시트는 변경 불가하지만 폴더명은 임의로 변경 가능하고 폴더 이동 역시 가능
-      {
-        var range = configSheet.getRange(i+2, 2);
-        targetFolder = folder.createFolder(`${categoryData[i][0]}${suffixForCreatingFolders}`);
-        targetFolderID = targetFolder.getId();
-        range.setValue(targetFolderID);
-        categoryData[i][1] = targetFolderID;
-      }
+      isEtcFolder = i+1;
+      continue;
     }
-    catch(err)       // 검색어에 해당하는 폴더 ID가 없으면 직접 만듦. 스프레드시트는 변경 불가하지만 폴더명은 임의로 변경 가능하고 폴더 이동 역시 가능
+    console.log(`(${i}/${lengthOfCategoryData}키워드 "${categoryData[i][0]}" 처리 시작`);
+    targetFolder = DriveApp.getFolderById(categoryData[i][1]);
+    targetFolderID = targetFolder.getId();
+    if(targetFolderID == null || targetFolderID == undefined)       // 검색어에 해당하는 폴더 ID가 없으면 직접 만듦. 스프레드시트는 변경 불가하지만 폴더명은 임의로 변경 가능하고 폴더 이동 역시 가능
     {
       var range = configSheet.getRange(i+2, 2);
       targetFolder = folder.createFolder(`${categoryData[i][0]}${suffixForCreatingFolders}`);
@@ -44,19 +40,17 @@ function categorizeFiles(config, option){
     }
     if(option.moveFile)
     {
-      fileList = DriveApp.searchFiles(`title contains "${categoryData[i][0]}" and parents in "${folderID}"`);
+      fileList = DriveApp.searchFiles(`title contains "${categoryData[i][0]}" and title != "${nameOfConfigFile}" and parents in "${folderID}"`);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
       while(fileList.hasNext())
       {
         var fileToMove = fileList.next();
-        if(fileToMove.getId() == configID)
-          continue;
-        console.log(`선택된 파일 : ${fileToMove.getName()}`);
+        console.log(`파일:"${fileToMove.getName()}" 선택 및 이동`);
         moveFile(fileToMove, targetFolder, folder);
       }
     }
     if(option.moveFolder)
     {
-      folderList = DriveApp.searchFolders(`title contains "${categoryData[i][0]}" and parents in "${folderID}"`);
+      folderList = DriveApp.searchFolders(`title contains "${categoryData[i][0]}" and parents in "${folderID}"`);// 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
       while(folderList.hasNext())
       {
         var folderToMove = folderList.next();
@@ -65,7 +59,7 @@ function categorizeFiles(config, option){
            continue;
         else
         {
-          console.log(`선택된 폴더 : ${folderToMove.getName()}`);
+          console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
           moveFolder(folderToMove, targetFolder, folder);
         }
       }
@@ -98,12 +92,10 @@ function categorizeFiles(config, option){
     
     if(option.moveFile)
     {
-      fileList = folder.getFiles();
+      fileList = DriveApp.searchFiles(`title != "${nameOfConfigFile}" and parents in "${folderID}"`);
       while(fileList.hasNext())
       {
         var fileToMove = fileList.next();
-        if(fileToMove.getId() == configID)    // config 파일이 넘어가지 않도록 조치
-          continue;
         console.log(`(기타)선택된 파일 : ${fileToMove.getName()}`);
         moveFile(fileToMove, etcFolder, folder);
       }
@@ -141,7 +133,7 @@ function moveFolder(folder, targetFolder, originalFolder)
 
 function isFolderInCategoryData(categoryData, lengthOfCategoryData, folderID)
 {
-  for(i=0; i<lengthOfCategoryData; i++)
+  for(var i=0; i<lengthOfCategoryData; i++)
     if(folderID == categoryData[i][1])
       return 1;
   
