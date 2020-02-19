@@ -9,11 +9,12 @@ function trigger(option) {
 }
 
 function main(){
+  startTime = (new Date()).getTime();
   var option = {
     moveFile: true,
     moveFolder: true,
-    moveEtc : false,
-    etcName : 'ETC'
+    moveEtc : true,
+    etcName : '그 외 기타'
   }
   
   trigger(option);
