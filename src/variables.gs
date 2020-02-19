@@ -1,2 +1,3 @@
 var nameOfConfigFile = 'FileCategorizerConfig';
-var suffixForCreatingFolders = '(made by File Categorizer)'
+var suffixForCreatingFolders = '(FC에서 생성)'
+var startTime;
