@@ -9,24 +9,6 @@ function trigger(option) {
   }
 }
 
-function onetime(option) {
-  var config = DriveApp.getFileById(option.configID);
-  
-  categorizeFiles(config, option);
-}
-
-function test(){
-  console.log('start');
-  count(2);
-  count(1);
-  console.log('finish');
-}
-
-async function count(num){
-  Utilities.sleep(num*1000);
-  console.log(`${num} finished : `);
-}
-
 function main(){
   startTime = (new Date()).getTime();
   var option = {
@@ -37,18 +19,6 @@ function main(){
   }
   
   trigger(option);
-}
-
-function onetimeMain(){
-  var option = {
-    configID: '12cXnxjx7qO2NBdbU5WB1v0l4WFkYLH_8_zSrnftBCvY',
-    moveFile: true,
-    moveFolder: true,
-    moveEtc : false,
-    etcName : '그 외 기타'
-  }
-  
-  onetime(option);
 }
 
 function removeAds(){  // 특정 이름을 가진 파일들을 모두 탐색해 지우고, 그 파일 삭제 후 해당 parent 폴더에 남는 파일이 하나밖에 없으면 그 파일을 상위 폴더로 끌어올림
@@ -106,10 +76,4 @@ function removeAds(){  // 특정 이름을 가진 파일들을 모두 탐색해 
         remRun: 'stop',
         remToken: 0});
   return;
-}
-
-function proTest(){
-  var scriptProperty = PropertiesService.getScriptProperties();
-  
-  scriptProperty.setProperty('TRIGGER_TOKEN', 'running');
 }
