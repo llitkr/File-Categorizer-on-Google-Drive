@@ -20,14 +20,14 @@ function categorizeFiles(config, option){
   var lengthOfCategoryData = categoryData.length;
   for(i=0; i<lengthOfCategoryData; i++)
   {
-    var currTime = (new Date()).getTime();
+    currentTime = (new Date()).getTime();
     console.log(`현재 실행으로부터 ${(currTime - startTime) / 1000}초 지남.`);
     if(categoryData[i][0] == 'etc')
     {
       isEtcFolder = i+1;
       continue;
     }
-    console.log(`(${i}/${lengthOfCategoryData}키워드 "${categoryData[i][0]}" 처리 시작`);
+    console.log(`(${i}/${lengthOfCategoryData})키워드 "${categoryData[i][0]}" 처리 시작`);
     targetFolder = DriveApp.getFolderById(categoryData[i][1]);
     targetFolderID = targetFolder.getId();
     if(targetFolderID == null || targetFolderID == undefined)       // 검색어에 해당하는 폴더 ID가 없으면 직접 만듦. 스프레드시트는 변경 불가하지만 폴더명은 임의로 변경 가능하고 폴더 이동 역시 가능
@@ -39,31 +39,9 @@ function categorizeFiles(config, option){
       categoryData[i][1] = targetFolderID;
     }
     if(option.moveFile)
-    {
-      fileList = DriveApp.searchFiles(`title contains "${categoryData[i][0]}" and title != "${nameOfConfigFile}" and parents in "${folderID}"`);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
-      while(fileList.hasNext())
-      {
-        var fileToMove = fileList.next();
-        console.log(`파일:"${fileToMove.getName()}" 선택 및 이동`);
-        moveFile(fileToMove, targetFolder, folder);
-      }
-    }
+      categorizeFileList(`title contains "${categoryData[i][0]}" and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
     if(option.moveFolder)
-    {
-      folderList = DriveApp.searchFolders(`title contains "${categoryData[i][0]}" and parents in "${folderID}"`);// 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
-      while(folderList.hasNext())
-      {
-        var folderToMove = folderList.next();
-        var folderIDToMove = folderToMove.getId();
-        if(isFolderInCategoryData(categoryData, lengthOfCategoryData, folderIDToMove))
-           continue;
-        else
-        {
-          console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
-          moveFolder(folderToMove, targetFolder, folder);
-        }
-      }
-    }
+      categorizeFolderList(`title contains "${categoryData[i][0]}" and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
   }
   if(option.moveEtc)
   {
@@ -119,13 +97,41 @@ function categorizeFiles(config, option){
   }
 }
 
-function moveFile(file, targetFolder, originalFolder)
+async function categorizeFileList(query, targetFolder, originalFolder)
+{
+  fileList = DriveApp.searchFiles(query);
+  while(fileList.hasNext())
+  {
+    var fileToMove = fileList.next();
+    console.log(`파일:"${fileToMove.getName()}" 선택 및 이동`);
+    moveFile(fileToMove, targetFolder, originalFolder);
+  }
+}
+
+async function categorizeFolderList(query, targetFolder, originalFolder, categoryData, lengthOfCategoryData)
+{
+  folderList = DriveApp.searchFolders(query);
+  while(folderList.hasNext())
+  {
+    var folderToMove = folderList.next();
+    var folderIDToMove = folderToMove.getId();
+    if(isFolderInCategoryData(categoryData, lengthOfCategoryData, folderIDToMove))
+       continue;
+    else
+    {
+      console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
+      moveFolder(folderToMove, targetFolder, originalFolder);
+    }
+  }
+}
+
+async function moveFile(file, targetFolder, originalFolder)
 {
   targetFolder.addFile(file);
   originalFolder.removeFile(file);
 }
 
-function moveFolder(folder, targetFolder, originalFolder)
+async function moveFolder(folder, targetFolder, originalFolder)
 {
   targetFolder.addFolder(folder);
   originalFolder.removeFolder(folder);
@@ -138,4 +144,59 @@ function isFolderInCategoryData(categoryData, lengthOfCategoryData, folderID)
       return 1;
   
   return 0;
+}
+
+function removeFiles(removeFileList, fileNameToRemove){
+  while(removeFileList.hasNext())
+  {
+    var fileToRemove = removeFileList.next();
+    if(fileToRemove.getName() != fileNameToRemove)
+      continue;
+    var parentFolder = fileToRemove.getParents();
+    if(parentFolder.hasNext())
+    {
+      console.log(`${getDirectory(fileToRemove)} 파일 삭제 중`);
+      parentFolder = parentFolder.next();
+      fileToRemove.setTrashed(true);
+      var dirFiles = parentFolder.getFiles();
+      var dirFile;
+      var i=0;
+      while(dirFiles.hasNext())
+      {
+        i++;
+        dirFile = dirFiles.next();
+      }
+      if(i==1)
+      {
+        moveFile(dirFile, parentFolder.getParents().next(), parentFolder);
+        parentFolder.setTrashed(true);
+        console.log(`${dirFile.getName()}파일이 하나만 있기 때문에 바깥 폴더로 빼내고 폴더 삭제`);
+      }
+      else
+      {
+        console.log(`${dirFile.getName()}파일이 하나 이상이기 때문에 폴더는 삭제하지 않음`);
+      }
+    }
+    else
+    {
+      console.log(`미아 파일. 파일만 삭제함.`);
+      fileToRemove.setTrashed(true);
+    }
+  currentTime = (new Date()).getTime() / 1000;
+  if(currentTime - startTime > MAXIMUM_EXE_TIME)
+  {
+    console.log('실행시간 초과로 다음 실행으로 넘겨줌');
+    return removeFileList;
+  }
+  }
+  return removeFileList;
+}
+
+function getDirectory(file){
+  var directory = '';
+  var parent = file.getParents();
+  if(parent.hasNext())
+    return getDirectory(parent.next()) + '/' + file.getName();
+  else
+    return file.getName();
 }
