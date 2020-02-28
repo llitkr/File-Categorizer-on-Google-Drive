@@ -1,4 +1,4 @@
-function categorizeFiles(config, option){
+function categorizeFiles(config, option, filI, filProp){
   var configFolders = config.getParents();
   if(!configFolders.hasNext())
     console.log('config 파일에 연결된 부모 폴더가 없음. 앱 종료');
@@ -8,7 +8,6 @@ function categorizeFiles(config, option){
   var targetFolderID;
   var result = 0;
   var configID = config.getId();
-  var i = 0;
   
   var configSpread = SpreadsheetApp.openById(config.getId());
   var fileList;
@@ -18,10 +17,8 @@ function categorizeFiles(config, option){
   configSheet = configSheet[0];
   var categoryData = configSheet.getRange(2, 1, configSheet.getLastRow()-1, 3).getValues();    // [0]은 파일 검색어, [1]은 목적지 폴더 아이디, [3]은 기타
   var lengthOfCategoryData = categoryData.length;
-  for(i=0; i<lengthOfCategoryData; i++)
+  for(i=filI; i<lengthOfCategoryData; i++)
   {
-    currentTime = (new Date()).getTime();
-    console.log(`현재 실행으로부터 ${(currTime - startTime) / 1000}초 지남.`);
     if(categoryData[i][0] == 'etc')
     {
       isEtcFolder = i+1;
@@ -42,6 +39,12 @@ function categorizeFiles(config, option){
       categorizeFileList(`title contains "${categoryData[i][0]}" and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
     if(option.moveFolder)
       categorizeFolderList(`title contains "${categoryData[i][0]}" and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
+    currentTime = (new Date()).getTime() / 1000;
+    if(currentTime - startTime > MAXIMUM_EXE_TIME)
+    {
+      filProp.setProperty('filI', i);
+      return;
+    }
   }
   if(option.moveEtc)
   {
@@ -76,6 +79,9 @@ function categorizeFiles(config, option){
         var fileToMove = fileList.next();
         console.log(`(기타)선택된 파일 : ${fileToMove.getName()}`);
         moveFile(fileToMove, etcFolder, folder);
+        currentTime = (new Date()).getTime() / 1000;
+        if(currentTime - startTime > MAXIMUM_EXE_TIME)
+          return;
       }
     }
     if(option.moveFolder)
@@ -92,9 +98,14 @@ function categorizeFiles(config, option){
           console.log(`(기타)선택된 폴더 : ${folderToMove.getName()}`);
           moveFolder(folderToMove, etcFolder, folder);
         }
+        if(currentTime - startTime > MAXIMUM_EXE_TIME)
+          return;
       }
     }
   }
+  filProp.setProperty('filI', i);
+
+  return;
 }
 
 async function categorizeFileList(query, targetFolder, originalFolder)
