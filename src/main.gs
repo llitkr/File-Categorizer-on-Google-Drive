@@ -66,12 +66,6 @@ function mainTrigger(){
   main();
 }
 
-function onetime(option) {
-  var config = DriveApp.getFileById(option.configID);
-  
-  categorizeFiles(config, option);
-}
-
 function main(){
   startTime = (new Date()).getTime() / 1000;
   currentTime = startTime;
@@ -95,18 +89,6 @@ function run(option){
   trigger(option);
   
   return;
-}
-
-function onetimeMain(){
-  var option = {
-    configID: '12cXnxjx7qO2NBdbU5WB1v0l4WFkYLH_8_zSrnftBCvY',
-    moveFile: true,
-    moveFolder: true,
-    moveEtc : false,
-    etcName : '그 외 기타'
-  }
-  
-  onetime(option);
 }
 
 function removeAds(){  // 특정 이름을 가진 파일들을 모두 탐색해 지우고, 그 파일 삭제 후 해당 parent 폴더에 남는 파일이 하나밖에 없으면 그 파일을 상위 폴더로 끌어올림
