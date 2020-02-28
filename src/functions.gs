@@ -1,7 +1,10 @@
-function categorizeFiles(config, option, filI, filProp){
+function categorizeFiles(config, option, filI, filProp, userMail){
   var configFolders = config.getParents();
   if(!configFolders.hasNext())
-    console.log('config 파일에 연결된 부모 폴더가 없음. 앱 종료');
+  {
+    console.log('config 파일에 연결된 부모 폴더가 없음. 다음 config 파일 탐색');
+    return;
+  }
   var folder = configFolders.next();
   var folderID = folder.getId();
   var targetFolder;
@@ -15,7 +18,10 @@ function categorizeFiles(config, option, filI, filProp){
   var isEtcFolder = 0;
   var configSheet = configSpread.getSheets();
   configSheet = configSheet[0];
-  var categoryData = configSheet.getRange(2, 1, configSheet.getLastRow()-1, 3).getValues();    // [0]은 파일 검색어, [1]은 목적지 폴더 아이디, [3]은 기타
+  var rowNumOfConfigSheet = configSheet.getLastRow();
+  if(rowNumOfConfigSheet < 2)
+    return;
+  var categoryData = configSheet.getRange(2, 1, rowNumOfConfigSheet-1, 3).getValues();    // [0]은 파일 검색어, [1]은 목적지 폴더 아이디, [3]은 기타
   var lengthOfCategoryData = categoryData.length;
   for(i=filI; i<lengthOfCategoryData; i++)
   {
@@ -23,6 +29,11 @@ function categorizeFiles(config, option, filI, filProp){
     {
       isEtcFolder = i+1;
       continue;
+    }
+    if(categoryData[i][0] == '')    // 해당 행에 키워드가 없는 경우
+    {
+      console.log(`경고 : ${folder.getName()}의 설정 파일 ${i+1}번째 행에 키워드 데이터가 없음`);
+      i++;
     }
     console.log(`(${i}/${lengthOfCategoryData})키워드 "${categoryData[i][0]}" 처리 시작`);
     targetFolder = DriveApp.getFolderById(categoryData[i][1]);
@@ -42,7 +53,7 @@ function categorizeFiles(config, option, filI, filProp){
     currentTime = (new Date()).getTime() / 1000;
     if(currentTime - startTime > MAXIMUM_EXE_TIME)
     {
-      filProp.setProperty('filI', i);
+      filProp.setProperty(`${userMail}filI`, i);
       return;
     }
   }
@@ -103,7 +114,7 @@ function categorizeFiles(config, option, filI, filProp){
       }
     }
   }
-  filProp.setProperty('filI', i);
+  filProp.setProperty(`${userMail}filI`, i);
 
   return;
 }
