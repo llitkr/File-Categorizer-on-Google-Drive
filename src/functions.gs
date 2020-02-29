@@ -1,4 +1,6 @@
 function categorizeFiles(config, option, filI, filProp, userMail){
+  var date = new Date();
+  date = `${date.getFullYear()}. ${(date.getMonth()+1)}. ${date.getDate()}`;
   var configFolders = config.getParents();
   if(!configFolders.hasNext())
   {
@@ -25,6 +27,8 @@ function categorizeFiles(config, option, filI, filProp, userMail){
   var lengthOfCategoryData = categoryData.length;
   for(i=filI; i<lengthOfCategoryData; i++)
   {
+    var folderCount = 0;
+    var fileCount = 0;
     if(categoryData[i][0] == 'etc')
     {
       isEtcFolder = i+1;
@@ -40,44 +44,57 @@ function categorizeFiles(config, option, filI, filProp, userMail){
     targetFolderID = targetFolder.getId();
     if(targetFolderID == null || targetFolderID == undefined)       // 검색어에 해당하는 폴더 ID가 없으면 직접 만듦. 스프레드시트는 변경 불가하지만 폴더명은 임의로 변경 가능하고 폴더 이동 역시 가능
     {
-      var range = configSheet.getRange(i+2, 2);
       targetFolder = folder.createFolder(`${categoryData[i][0]}${suffixForCreatingFolders}`);
       targetFolderID = targetFolder.getId();
-      range.setValue(targetFolderID);
       categoryData[i][1] = targetFolderID;
     }
     if(option.moveFile)
-      categorizeFileList(`title contains "${categoryData[i][0]}" and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
+      fileCount = categorizeFileList(`title contains "${categoryData[i][0]}" and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
     if(option.moveFolder)
-      categorizeFolderList(`title contains "${categoryData[i][0]}" and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
+      folderCount = categorizeFolderList(`title contains "${categoryData[i][0]}" and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
+    if(fileCount || folderCount)
+      categoryData[i][2] = `${date}에 마지막으로 ${fileCount}개의 파일과 ${folderCount}개의 폴더를 이동`;
     currentTime = (new Date()).getTime() / 1000;
     if(currentTime - startTime > MAXIMUM_EXE_TIME)
     {
       filProp.setProperty(`${userMail}filI`, i);
+      configSheet.getRange(2, 1, categoryData.length, 3).setValues(categoryData);
       return;
     }
   }
+  filProp.setProperty(`${userMail}filI`, i);
   if(option.moveEtc)
   {
+    var fileCount = 0;
+    var folderCount = 0;
     var etcFolder;
     if(isEtcFolder == 0)
     {
       try
       {
         etcFolder = DriveApp.searchFolders(`title contains "${option.etcName}" and parents in "${folderID}"`);
-        etcFolder = etcFolder.next();
-        var lastRowOfConfigSheet = configSheet.getLastRow() + 1;
-        configSheet.getRange(lastRowOfConfigSheet, 1).setValue('etc');
-        configSheet.getRange(lastRowOfConfigSheet, 2).setValue(etcFolder.getId());
+        if(etcFolder.hasNext())
+        {
+          etcFolder = etcFolder.next();
+          categoryData[categoryData.length+1] = new Array(3);
+          categoryData[categoryData.length][0] = 'etc';
+          categoryDate[categoryData.length][1] = etcFolder.getId();
+          lengthOfCategoryData = categoryData.length;
+          isEtcFolder = categoryData.length;
+        }
+        else
+        {
+          console.log('etc 폴더가 존재하지 않아 새로 생성함');
+          etcFolder = folder.createFolder(option.etcName);
+          categoryData[categoryData.length] = new Array(3);
+          categoryData[categoryData.length-1][0] = 'etc';
+          categoryData[categoryData.length-1][1] = etcFolder.getId();
+          lengthOfCategoryData = categoryData.length;
+          isEtcFolder = categoryData.length;
+        }
       }
-      catch(err)
-      {
-        console.log('에러 발생, 에러 : ' + err);
-        etcFolder = folder.createFolder(option.etcName);
-        var lastRowOfConfigSheet = configSheet.getLastRow() + 1;
-        configSheet.getRange(lastRowOfConfigSheet, 1).setValue('etc');
-        configSheet.getRange(lastRowOfConfigSheet, 2).setValue(etcFolder.getId());
-      }
+      catch(err){
+        console.log('에러 발생, 에러 : ' + err); }
     }
     else
       etcFolder = DriveApp.getFolderById(categoryData[isEtcFolder-1][1]);
@@ -90,9 +107,13 @@ function categorizeFiles(config, option, filI, filProp, userMail){
         var fileToMove = fileList.next();
         console.log(`(기타)선택된 파일 : ${fileToMove.getName()}`);
         moveFile(fileToMove, etcFolder, folder);
+        fileCount++;
         currentTime = (new Date()).getTime() / 1000;
         if(currentTime - startTime > MAXIMUM_EXE_TIME)
+        {
+          configSheet.getRange(2, 1, categoryData.length, 3).setValues(categoryData);
           return;
+        }
       }
     }
     if(option.moveFolder)
@@ -108,30 +129,45 @@ function categorizeFiles(config, option, filI, filProp, userMail){
         {
           console.log(`(기타)선택된 폴더 : ${folderToMove.getName()}`);
           moveFolder(folderToMove, etcFolder, folder);
+          folderCount++;
         }
         if(currentTime - startTime > MAXIMUM_EXE_TIME)
+        {
+          configSheet.getRange(2, 1, categoryData.length, 3).setValues(categoryData);
           return;
+        }
       }
     }
+    
+    categoryData[isEtcFolder-1][2] = `${date}에 마지막으로 ${fileCount}개의 파일과 ${folderCount}개의 폴더를 이동`;
+
   }
   filProp.setProperty(`${userMail}filI`, i);
 
+  configSheet.getRange(2, 1, categoryData.length, 3).setValues(categoryData);
   return;
 }
 
-async function categorizeFileList(query, targetFolder, originalFolder)
+function categorizeFileList(query, targetFolder, originalFolder)
 {
+  var count = 0;
   fileList = DriveApp.searchFiles(query);
   while(fileList.hasNext())
   {
+    count++;
     var fileToMove = fileList.next();
     console.log(`파일:"${fileToMove.getName()}" 선택 및 이동`);
     moveFile(fileToMove, targetFolder, originalFolder);
+    currentTime = (new Date()).getTime() / 1000;
+    if(currentTime - startTime > MAXIMUM_EXE_TIME)
+      return count;
   }
+  return count;
 }
 
-async function categorizeFolderList(query, targetFolder, originalFolder, categoryData, lengthOfCategoryData)
+function categorizeFolderList(query, targetFolder, originalFolder, categoryData, lengthOfCategoryData)
 {
+  var count = 0;
   folderList = DriveApp.searchFolders(query);
   while(folderList.hasNext())
   {
@@ -144,16 +180,21 @@ async function categorizeFolderList(query, targetFolder, originalFolder, categor
       console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
       moveFolder(folderToMove, targetFolder, originalFolder);
     }
+    count++;
+    currentTime = (new Date()).getTime() / 1000;
+    if(currentTime - startTime > MAXIMUM_EXE_TIME)
+      return count;
   }
+  return count;
 }
 
-async function moveFile(file, targetFolder, originalFolder)
+function moveFile(file, targetFolder, originalFolder)
 {
   targetFolder.addFile(file);
   originalFolder.removeFile(file);
 }
 
-async function moveFolder(folder, targetFolder, originalFolder)
+function moveFolder(folder, targetFolder, originalFolder)
 {
   targetFolder.addFolder(folder);
   originalFolder.removeFolder(folder);
@@ -221,4 +262,15 @@ function getDirectory(file){
     return getDirectory(parent.next()) + '/' + file.getName();
   else
     return file.getName();
+}
+
+function deleteTriggers(funcName)
+{
+  var triggers = ScriptApp.getProjectTriggers();
+  
+  for(var i=0; i<triggers.length; i++)
+    if(triggers[i].getHandlerFunction() == funcName)
+      ScriptApp.deleteTrigger(triggers[i]);
+  
+  return;
 }
