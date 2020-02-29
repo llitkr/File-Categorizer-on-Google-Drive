@@ -8,6 +8,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
     return;
   }
   var folder = configFolders.next();
+  console.log(`${getDirectory(config)} 파일 처리 시작`);
   var folderID = folder.getId();
   var targetFolder;
   var targetFolderID;
@@ -58,13 +59,23 @@ function categorizeFiles(config, option, filI, filProp, userMail){
     if(currentTime - startTime > MAXIMUM_EXE_TIME)
     {
       filProp.setProperty(`${userMail}filI`, i);
+      filProp.setProperty(`${userMail}filRunningConfigId`, config.getId());
       configSheet.getRange(2, 1, categoryData.length, 3).setValues(categoryData);
       return;
     }
   }
   filProp.setProperty(`${userMail}filI`, i);
+  
   if(option.moveEtc)
   {
+    console.log(`키워드 외 기타 파일 처리 시작.(폴더:${option.etcName})`);
+    if(isEtcFolder == 0)
+      for(i=0; i<categoryData.length; i++)
+        if(categoryData[i][0] == 'etc')
+        {
+          isEtcFolder = i+1;
+          break;
+        }
     var fileCount = 0;
     var folderCount = 0;
     var etcFolder;
@@ -112,6 +123,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
         if(currentTime - startTime > MAXIMUM_EXE_TIME)
         {
           configSheet.getRange(2, 1, categoryData.length, 3).setValues(categoryData);
+          filProp.setProperty(`${userMail}filRunningConfigId`, config.getId());
           return;
         }
       }
@@ -134,6 +146,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
         if(currentTime - startTime > MAXIMUM_EXE_TIME)
         {
           configSheet.getRange(2, 1, categoryData.length, 3).setValues(categoryData);
+          filProp.setProperty(`${userMail}filRunningConfigId`, config.getId());
           return;
         }
       }
@@ -143,6 +156,8 @@ function categorizeFiles(config, option, filI, filProp, userMail){
 
   }
   filProp.setProperty(`${userMail}filI`, i);
+
+  filProp.setProperty(`${userMail}filRunningConfigId`, '0');
 
   configSheet.getRange(2, 1, categoryData.length, 3).setValues(categoryData);
   return;
@@ -245,12 +260,12 @@ function removeFiles(removeFileList, fileNameToRemove){
       console.log(`미아 파일. 파일만 삭제함.`);
       fileToRemove.setTrashed(true);
     }
-  currentTime = (new Date()).getTime() / 1000;
-  if(currentTime - startTime > MAXIMUM_EXE_TIME)
-  {
-    console.log('실행시간 초과로 다음 실행으로 넘겨줌');
-    return removeFileList;
-  }
+    currentTime = (new Date()).getTime() / 1000;
+    if(currentTime - startTime > MAXIMUM_EXE_TIME)
+    {
+      console.log('실행시간 초과로 다음 실행으로 넘겨줌');
+      return removeFileList;
+    }
   }
   return removeFileList;
 }
