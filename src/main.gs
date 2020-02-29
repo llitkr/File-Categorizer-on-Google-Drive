@@ -66,6 +66,12 @@ function mainTrigger(){
   main();
 }
 
+function onetime(option) {
+  var config = DriveApp.getFileById(option.configID);
+  
+  categorizeFiles(config, option);
+}
+
 function main(){
   startTime = (new Date()).getTime() / 1000;
   currentTime = startTime;
@@ -73,7 +79,7 @@ function main(){
   var option = {
     moveFile: true,
     moveFolder: true,
-    moveEtc : false,
+    moveEtc : true,
     etcName : '그 외 기타'
   }
   
@@ -91,10 +97,28 @@ function run(option){
   return;
 }
 
+function onetimeMain(){
+  var option = {
+    configID: '12cXnxjx7qO2NBdbU5WB1v0l4WFkYLH_8_zSrnftBCvY',
+    moveFile: true,
+    moveFolder: true,
+    moveEtc : false,
+    etcName : '그 외 기타'
+  }
+  
+  onetime(option);
+}
+
+function removeAdsTrigger(){
+ removeAds(); 
+}
+
 function removeAds(){  // 특정 이름을 가진 파일들을 모두 탐색해 지우고, 그 파일 삭제 후 해당 parent 폴더에 남는 파일이 하나밖에 없으면 그 파일을 상위 폴더로 끌어올림
   startTime = (new Date()).getTime() / 1000;
+  
+  var userMail = `${Session.getActiveUser().getEmail()}-`;
   var remProp = PropertiesService.getScriptProperties();
-  var remRun = remProp.getProperty('remRun');
+  var remRun = remProp.getProperty(`${userMail}remRun`);
   var token = 0;
   var i;
   
@@ -104,19 +128,19 @@ function removeAds(){  // 특정 이름을 가진 파일들을 모두 탐색해 
       console.log('이미 다른 프로세스에서 진행중이므로 종료');
       return;
     case 'continue':    // 이전 작업에서 이어서 해야할 때
-      remProp.setProperty('remRun', 'running');
+      remProp.setProperty(`${userMail}remRun`, 'running');
       console.log('remRun의 상태를 running으로 변경 후 이전 작업에 이어서 시작');
-      i = parseInt(remProp.getProperty('remI'));
-      token = remProp.getProperty('remToken');
+      i = parseInt(remProp.getProperty(`${userMail}remI`));
+      token = remProp.getProperty(`${userMail}remToken`);
       break;
     default:
-      remProp.setProperty('remRun', 'running');
+      remProp.setProperty(`${userMail}remRun`, 'running');
       i = 0;
       console.log('remRun의 상태를 running으로 변경 후 새 작업 시작');
   }
   while(i<fileNameToRemove.length)
   {
-    remProp.setProperty('remI', i);
+    remProp.setProperty(`${userMail}remI`, i);
     console.log(`${i+1}번째 삭제할 파일 : ${fileNameToRemove[i]}`);
     var removeFileList;
     if(token)
@@ -129,9 +153,9 @@ function removeAds(){  // 특정 이름을 가진 파일들을 모두 탐색해 
     removeFileList = removeFiles(removeFileList, fileNameToRemove[i]);
     if(currentTime - startTime > MAXIMUM_EXE_TIME)
     {
-      remProp.setProperties({
-        remRun: 'continue',
-        remToken: removeFileList.getContinuationToken()});
+      remProp.setProperty(`${userMail}remRun`, 'continue');
+      remProp.setProperty(`${userMail}remToken`, removeFileList.getContinuationToken());
+      
       deleteTriggers('removeAds');
       
       ScriptApp.newTrigger("removeAds")
@@ -144,20 +168,9 @@ function removeAds(){  // 특정 이름을 가진 파일들을 모두 탐색해 
     }
     i++;
   }
-  remProp.deleteProperty('remRun');
-  remProp.deleteProperty('remToken');
-  remProp.deleteProperty('remI');
+  remProp.deleteProperty(`${userMail}remRun`);
+  remProp.deleteProperty(`${userMail}remToken`);
+  remProp.deleteProperty(`${userMail}remI`);
   deleteTriggers('removeAds');
-  return;
-}
-
-function deleteTriggers(funcName)
-{
-  var triggers = ScriptApp.getProjectTriggers();
-  
-  for(var i=0; i<triggers.length; i++)
-    if(triggers[i].getHandlerFunction() == funcName)
-      ScriptApp.deleteTrigger(triggers[i]);
-  
   return;
 }
