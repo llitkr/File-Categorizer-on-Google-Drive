@@ -85,14 +85,14 @@ function categorizeFiles(config, option, filI, filProp, userMail){
     }
     if(option.moveFile)
       if(option.testMode)
-        testLog = categorizeFileListTest(`title contains "${qr}" and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder, testLog);
+        testLog = categorizeFileListTest(`(title contains "${qr}") and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder, testLog);
       else
-        fileCount = categorizeFileList(`title contains "${qr}" and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
+        fileCount = categorizeFileList(`(title contains "${qr}") and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
     if(option.moveFolder)
       if(option.testMode)
-        testLog = categorizeFolderListTest(`title contains "${qr}" and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData, testLog);
+        testLog = categorizeFolderListTest(`(title contains "${qr}") and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData, testLog);
       else
-        folderCount = categorizeFolderList(`title contains "${qr}" and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
+        folderCount = categorizeFolderList(`(title contains "${qr}") and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
     if((fileCount || folderCount) && option.testMode != true)
       categoryData[i][2] = `${date}에 마지막으로 ${fileCount}개의 파일과 ${folderCount}개의 폴더를 이동`;
     currentTime = (new Date()).getTime() / 1000;
