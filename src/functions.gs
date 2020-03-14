@@ -237,8 +237,8 @@ function categorizeFiles(config, option, filI, filProp, userMail){
         }
       }
     }
-    
-    categoryData[isEtcFolder-1][2] = `${date}에 마지막으로 ${fileCount}개의 파일과 ${folderCount}개의 폴더를 이동`;
+    if((fileCount || folderCount) && option.testMode != true)
+      categoryData[isEtcFolder-1][2] = `${date}에 마지막으로 ${fileCount}개의 파일과 ${folderCount}개의 폴더를 이동`;
 
   }
   filProp.setProperty(`${userMail}filI`, i);
@@ -379,14 +379,22 @@ function removeFiles(removeFileList, fileNameToRemove){
       parentFolder = parentFolder.next();
       fileToRemove.setTrashed(true);
       var dirFiles = parentFolder.getFiles();
+      var dirFolders = parentFolder.getFolders();
       var dirFile;
+      var dirFolder;
       var i=0;
-      while(dirFiles.hasNext())
+      var j=0;
+      while(dirFiles.hasNext() && i<2)
       {
         i++;
         dirFile = dirFiles.next();
       }
-      if(i==1)
+      while(dirFolders.hasNext() && j == 0)
+      {
+        j++;
+        dirFolder = dirFolder.next();
+      }
+      if(i==1 && j==0)
       {
         moveFile(dirFile, parentFolder.getParents().next(), parentFolder);
         parentFolder.setTrashed(true);
@@ -429,5 +437,13 @@ function deleteTriggers(funcName)
     if(triggers[i].getHandlerFunction() == funcName)
       ScriptApp.deleteTrigger(triggers[i]);
   
+  return;
+}
+
+function qrtest() {
+  console.log('시작');
+  fileList = DriveApp.searchFiles(`parents in "0BzQP6-UNiaNWcm9zZ1pKR08yTE0"`);
+  while(fileList.hasNext())
+    console.log(`찾은 파일 : ${fileList.next().getName()}`);
   return;
 }
