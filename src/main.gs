@@ -40,7 +40,7 @@ function trigger(option) {
   while(configList.hasNext())
   {
     var config = configList.next();
-    if(config.getName() == nameOfConfigFile)
+    if(config.getName() == nameOfConfigFile && config.getMimeType() == 'application/vnd.google-apps.spreadsheet')
       categorizeFiles(config, option, i, filProp, userMail);
     if(currentTime - startTime > MAXIMUM_EXE_TIME)
     {
