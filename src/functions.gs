@@ -70,8 +70,23 @@ function categorizeFiles(config, option, filI, filProp, userMail){
       i++;
     }
     console.log(`(${i}/${lengthOfCategoryData})키워드 "${categoryData[i][0]}" 처리 시작`);
-    targetFolder = DriveApp.getFolderById(categoryData[i][1]);
-    targetFolderID = targetFolder.getId();
+    try
+    {
+      targetFolder = DriveApp.getFolderById(categoryData[i][1]);
+      targetFolderID = targetFolder.getId();
+    }
+    catch(err)
+    {
+      targetFolder = folder.createFolder(`${categoryData[i][0]}${suffixForCreatingFolders}`);
+      targetFolderID = targetFolder.getId();
+      categoryData[i][1] = targetFolderID;
+      if(option.testMode)
+      {
+        testLog[testLog.length] = new Array();
+        testLog[testLog.length-1][0] = `키워드 "${categoryData[i][0]}"에 대한 폴더가 없거나 ID가 잘못되어 새 폴더를 만듦.(새 폴더명 : ${categoryData[i][0]}${suffixForCreatingFolders})`;
+      }
+      console.log(`${categoryData[i][1]} 아이디의 폴더를 찾는 데 실패하여 새 폴더를 만듦.(새 폴더명 : ${categoryData[i][0]}${suffixForCreatingFolders}`);
+    }
     if(targetFolderID == null || targetFolderID == undefined)       // 검색어에 해당하는 폴더 ID가 없으면 직접 만듦. 스프레드시트는 변경 불가하지만 폴더명은 임의로 변경 가능하고 폴더 이동 역시 가능
     {
       targetFolder = folder.createFolder(`${categoryData[i][0]}${suffixForCreatingFolders}`);
@@ -87,12 +102,12 @@ function categorizeFiles(config, option, filI, filProp, userMail){
       if(option.testMode)
         testLog = categorizeFileListTest(`(title contains "${qr}") and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder, testLog);
       else
-        fileCount = categorizeFileList(`(title contains "${qr}") and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
+        fileCount = categorizeFileList(`(title contains "${qr}") and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder, filProp, userMail);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
     if(option.moveFolder)
       if(option.testMode)
         testLog = categorizeFolderListTest(`(title contains "${qr}") and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData, testLog);
       else
-        folderCount = categorizeFolderList(`(title contains "${qr}") and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
+        folderCount = categorizeFolderList(`(title contains "${qr}") and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData, filProp, userMail)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
     if((fileCount || folderCount) && option.testMode != true)
       categoryData[i][2] = `${date}에 마지막으로 ${fileCount}개의 파일과 ${folderCount}개의 폴더를 이동`;
     currentTime = (new Date()).getTime() / 1000;
@@ -147,7 +162,9 @@ function categorizeFiles(config, option, filI, filProp, userMail){
         console.log('에러 발생, 에러 : ' + err); }
     }
     else
+    {
       etcFolder = DriveApp.getFolderById(categoryData[isEtcFolder-1][1]);
+    }
     
     if(option.moveFile)
     {
@@ -177,7 +194,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
         {
           var fileToMove = fileList.next();
           console.log(`(기타)선택된 파일 : ${fileToMove.getName()}`);
-          moveFile(fileToMove, etcFolder, folder);
+          moveFile(fileToMove, etcFolder, folder, filProp, userMail);
           fileCount++;
           currentTime = (new Date()).getTime() / 1000;
           if(currentTime - startTime > MAXIMUM_EXE_TIME)
@@ -226,7 +243,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
           else
           {
             console.log(`(기타)선택된 폴더 : ${folderToMove.getName()}`);
-            moveFolder(folderToMove, etcFolder, folder);
+            moveFolder(folderToMove, etcFolder, folder, filProp, userMail);
             folderCount++;
           }
           if(currentTime - startTime > MAXIMUM_EXE_TIME)
@@ -283,7 +300,7 @@ function categorizeFileListTest(query, targetFolder, originalFolder, testLog)
   return testLog;
 }
 
-function categorizeFileList(query, targetFolder, originalFolder)
+function categorizeFileList(query, targetFolder, originalFolder, filProp, userMail)
 {
   var count = 0;
   fileList = DriveApp.searchFiles(query);
@@ -292,7 +309,7 @@ function categorizeFileList(query, targetFolder, originalFolder)
     count++;
     var fileToMove = fileList.next();
     console.log(`파일:"${fileToMove.getName()}" 선택 및 이동`);
-    moveFile(fileToMove, targetFolder, originalFolder);
+    moveFile(fileToMove, targetFolder, originalFolder, filProp, userMail);
     currentTime = (new Date()).getTime() / 1000;
     if(currentTime - startTime > MAXIMUM_EXE_TIME)
       return count;
@@ -322,7 +339,7 @@ function categorizeFolderListTest(query, targetFolder, originalFolder, categoryD
   return testLog;
 }
 
-function categorizeFolderList(query, targetFolder, originalFolder, categoryData, lengthOfCategoryData)
+function categorizeFolderList(query, targetFolder, originalFolder, categoryData, lengthOfCategoryData, filProp, userMail)
 {
   var count = 0;
   folderList = DriveApp.searchFolders(query);
@@ -335,7 +352,7 @@ function categorizeFolderList(query, targetFolder, originalFolder, categoryData,
     else
     {
       console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
-      moveFolder(folderToMove, targetFolder, originalFolder);
+      moveFolder(folderToMove, targetFolder, originalFolder, filProp, userMail);
     }
     count++;
     currentTime = (new Date()).getTime() / 1000;
@@ -345,14 +362,16 @@ function categorizeFolderList(query, targetFolder, originalFolder, categoryData,
   return count;
 }
 
-function moveFile(file, targetFolder, originalFolder)
+function moveFile(file, targetFolder, originalFolder, filProp, userMail)
 {
+  filProp.setProperty(`${userMail}lastFileId`, file.getId());
   targetFolder.addFile(file);
   originalFolder.removeFile(file);
 }
 
-function moveFolder(folder, targetFolder, originalFolder)
+function moveFolder(folder, targetFolder, originalFolder, filProp, userMail)
 {
+  filProp.setProperty(`${userMail}lastFolderId`, folder.getId());
   targetFolder.addFolder(folder);
   originalFolder.removeFolder(folder);
 }
