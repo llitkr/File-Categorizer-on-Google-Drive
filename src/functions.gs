@@ -369,6 +369,12 @@ function moveFile(file, targetFolder, originalFolder, filProp, userMail)
   originalFolder.removeFile(file);
 }
 
+function moveFileR(file, targetFolder, originalFolder)
+{
+  targetFolder.addFile(file);
+  originalFolder.removeFile(file);
+}
+
 function moveFolder(folder, targetFolder, originalFolder, filProp, userMail)
 {
   filProp.setProperty(`${userMail}lastFolderId`, folder.getId());
@@ -415,7 +421,7 @@ function removeFiles(removeFileList, fileNameToRemove){
       }
       if(i==1 && j==0)
       {
-        moveFile(dirFile, parentFolder.getParents().next(), parentFolder);
+        moveFileR(dirFile, parentFolder.getParents().next(), parentFolder);
         parentFolder.setTrashed(true);
         console.log(`${dirFile.getName()}파일이 하나만 있기 때문에 바깥 폴더로 빼내고 폴더 삭제`);
       }
@@ -456,13 +462,5 @@ function deleteTriggers(funcName)
     if(triggers[i].getHandlerFunction() == funcName)
       ScriptApp.deleteTrigger(triggers[i]);
   
-  return;
-}
-
-function qrtest() {
-  console.log('시작');
-  fileList = DriveApp.searchFiles(`parents in "0BzQP6-UNiaNWcm9zZ1pKR08yTE0"`);
-  while(fileList.hasNext())
-    console.log(`찾은 파일 : ${fileList.next().getName()}`);
   return;
 }
