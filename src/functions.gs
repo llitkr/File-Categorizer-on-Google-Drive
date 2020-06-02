@@ -417,7 +417,7 @@ function removeFiles(removeFileList, fileNameToRemove){
       while(dirFolders.hasNext() && j == 0)
       {
         j++;
-        dirFolder = dirFolder.next();
+        dirFolder = dirFolders.next();
       }
       if(i==1 && j==0)
       {
@@ -425,9 +425,13 @@ function removeFiles(removeFileList, fileNameToRemove){
         parentFolder.setTrashed(true);
         console.log(`${dirFile.getName()}파일이 하나만 있기 때문에 바깥 폴더로 빼내고 폴더 삭제`);
       }
-      else
+      else if(i)
       {
         console.log(`${dirFile.getName()}파일이 하나 이상이기 때문에 폴더는 삭제하지 않음`);
+      }
+      else
+      {
+        console.log('파일을 찾을 수 없으므로 스킵');
       }
     }
     else
