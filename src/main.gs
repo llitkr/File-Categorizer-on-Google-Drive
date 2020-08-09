@@ -19,6 +19,7 @@ function trigger(option) {
         if(!runStack)
         {
           runStack = 1;
+          filProp.setProperty(`${userMail}runStack`, runStack);
           return;
         }
         else if(runStack == 3)
@@ -30,6 +31,7 @@ function trigger(option) {
         else
         {
           runStack++;
+          filProp.setProperty(`${userMail}runStack`, runStack);
           return;
         }
       else
@@ -294,19 +296,19 @@ function moveAllFiles() {
   movProp.deleteProperty(`${userMail}movRun`);
 }
 
-function moveMain()
+function copyMain()
 {
   startTime = (new Date()).getTime() / 1000;
   currentTime = startTime;
   var oldFolder = DriveApp.getFolderById('16jFPhhe_lNaRzN9ftOougoUCWh_3_T45');
   var newFolder = DriveApp.getFolderById('1N_sZg1iVGEKN10wvz3Q_9GYRrsjqNwLp');
   
-  moveAllFiles(oldFolder, newFolder);
+  copyAllFiles(oldFolder, newFolder);
   
   console.log(`************** 모든 폴더 처리 끝. 스크립트 종료 ***************`);
 }
 
-function moveAllFiles(oldFolder, newFolder)
+function copyAllFiles(oldFolder, newFolder)
 {
   
   var prop = PropertiesService.getScriptProperties();
@@ -381,7 +383,7 @@ function moveAllFiles(oldFolder, newFolder)
     else
       nnewFolder = newFolder.createFolder(folder.getName());
     console.log(`**********${folder.getName()} 폴더로 들어가기*************`);
-    moveAllFiles(folder, nnewFolder);
+    copyAllFiles(folder, nnewFolder);
     if(currentTime - startTime > MAXIMUM_EXE_TIME || exit)
       return;
   }
