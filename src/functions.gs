@@ -194,7 +194,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
         {
           var fileToMove = fileList.next();
           console.log(`(기타)선택된 파일 : ${fileToMove.getName()}`);
-          moveFile(fileToMove, etcFolder, folder, filProp, userMail);
+          moveFile(fileToMove, etcFolder, filProp, userMail);
           fileCount++;
           currentTime = (new Date()).getTime() / 1000;
           if(currentTime - startTime > MAXIMUM_EXE_TIME)
@@ -243,7 +243,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
           else
           {
             console.log(`(기타)선택된 폴더 : ${folderToMove.getName()}`);
-            moveFolder(folderToMove, etcFolder, folder, filProp, userMail);
+            moveFolder(folderToMove, etcFolder, filProp, userMail);
             folderCount++;
           }
           if(currentTime - startTime > MAXIMUM_EXE_TIME)
@@ -309,7 +309,7 @@ function categorizeFileList(query, targetFolder, originalFolder, filProp, userMa
     count++;
     var fileToMove = fileList.next();
     console.log(`파일:"${fileToMove.getName()}" 선택 및 이동`);
-    moveFile(fileToMove, targetFolder, originalFolder, filProp, userMail);
+    moveFile(fileToMove, targetFolder, filProp, userMail);
     currentTime = (new Date()).getTime() / 1000;
     if(currentTime - startTime > MAXIMUM_EXE_TIME)
       return count;
@@ -352,7 +352,7 @@ function categorizeFolderList(query, targetFolder, originalFolder, categoryData,
     else
     {
       console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
-      moveFolder(folderToMove, targetFolder, originalFolder, filProp, userMail);
+      moveFolder(folderToMove, targetFolder, filProp, userMail);
     }
     count++;
     currentTime = (new Date()).getTime() / 1000;
@@ -362,24 +362,37 @@ function categorizeFolderList(query, targetFolder, originalFolder, categoryData,
   return count;
 }
 
-function moveFile(file, targetFolder, originalFolder, filProp, userMail)
+function moveFile(file, targetFolder, filProp, userMail)
 {
   filProp.setProperty(`${userMail}lastFileId`, file.getId());
-  targetFolder.addFile(file);
-  originalFolder.removeFile(file);
+  try{
+    file.moveTo(targetFolder);
+  }
+  catch(err)
+  {
+    console.log(`에러 ${err} 발생으로 다시 시도`);
+    moveFile(file, targetFolder, filProp, userMail);
+  }
 }
 
-function moveFileR(file, targetFolder, originalFolder)
+function moveFileR(file, targetFolder)
 {
-  targetFolder.addFile(file);
-  originalFolder.removeFile(file);
+  file.moveTo(targetFolder);
 }
 
-function moveFolder(folder, targetFolder, originalFolder, filProp, userMail)
+function moveFolder(folder, targetFolder, filProp, userMail)
 {
+  if(folder == targetFolder)
+    return;
   filProp.setProperty(`${userMail}lastFolderId`, folder.getId());
-  targetFolder.addFolder(folder);
-  originalFolder.removeFolder(folder);
+  try{
+    folder.moveTo(targetFolder);
+  }
+  catch(err)
+  {
+    console.log(`에러 ${err} 발생으로 다시 시도`);
+    moveFolder(folder, targetFolder, filProp, userMail);
+  }
 }
 
 function isFolderInCategoryData(categoryData, lengthOfCategoryData, folderID)
@@ -421,7 +434,7 @@ function removeFiles(removeFileList, fileNameToRemove){
       }
       if(i==1 && j==0)
       {
-        moveFileR(dirFile, parentFolder.getParents().next(), parentFolder);
+        moveFileR(dirFile, parentFolder.getParents().next());
         parentFolder.setTrashed(true);
         console.log(`${dirFile.getName()}파일이 하나만 있기 때문에 바깥 폴더로 빼내고 폴더 삭제`);
       }
@@ -466,13 +479,5 @@ function deleteTriggers(funcName)
     if(triggers[i].getHandlerFunction() == funcName)
       ScriptApp.deleteTrigger(triggers[i]);
   
-  return;
-}
-
-function qrtest() {
-  console.log('시작');
-  fileList = DriveApp.searchFiles(`parents in "0BzQP6-UNiaNWcm9zZ1pKR08yTE0"`);
-  while(fileList.hasNext())
-    console.log(`찾은 파일 : ${fileList.next().getName()}`);
   return;
 }
