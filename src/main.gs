@@ -36,8 +36,10 @@ function trigger(option) {
         }
       else
       {
-        filProp.setProperty(`${userMail}runStackFile`, lastFileProp);
-        filProp.setProperty(`${userMail}runStackFolder`, lastFolderProp);
+        if(lastFileProp)
+          filProp.setProperty(`${userMail}runStackFile`, lastFileProp);
+        if(lastFolderProp)
+          filProp.setProperty(`${userMail}runStackFolder`, lastFolderProp);
       }
       console.log('스크립트를 이미 다른 프로세스에서 진행중이므로 종료(script.google.com - 내 실행에서 실행 중인 스크립트가 없음에도 이 메세지가 나타난다면 portal.llit.kr/support 로 문의)');
       return;
@@ -68,7 +70,7 @@ function trigger(option) {
     filProp.setProperty(`${userMail}filConfigToken`, configList.getContinuationToken());
   }
   
-  while(configList.hasNext())
+  while(hasNext(configList))
   {
     var config = configList.next();
     if(config.getName() == nameOfConfigFile && config.getMimeType() == 'application/vnd.google-apps.spreadsheet')
@@ -250,7 +252,7 @@ function moveAllFiles() {
   if(option.moveFile)
   {
     var fileListToMove = oFolder.getFiles();
-    while(fileListToMove.hasNext())
+    while(hasNext(fileListToMove))
     {
       moveFile(fileListToMove.next(), nFolder, oFolder);
       currentTime = (new Date()).getTime() / 1000;
@@ -273,7 +275,7 @@ function moveAllFiles() {
   if(option.moveFolder)
   {
     var folderListToMove = oFolder.getFolders();
-    while(folderListToMove.hasNext())
+    while(hasNext(folderListToMove))
     {
       moveFolder(folderListToMove.next(), nFolder, oFolder);
       if(currentTime - startTime > MAXIMUM_EXE_TIME)
@@ -330,7 +332,7 @@ function copyAllFiles(oldFolder, newFolder)
     fileList = oldFolder.getFiles();
   }
   
-  while(fileList.hasNext())
+  while(hasNext(fileList))
   {
     var file = fileList.next();
     
@@ -373,12 +375,12 @@ function copyAllFiles(oldFolder, newFolder)
   }
   prop.setProperty(newFolder.getId() + 'Token', fileList.getContinuationToken());
   folderList = oldFolder.getFolders();
-  while(folderList.hasNext())
+  while(hasNext(folderList))
   {
     var folder = folderList.next();
     var nnewFolder = DriveApp.searchFolders(`title = "${folder.getName()}" and parents in "${newFolder.getId()}"`);
 
-    if(nnewFolder.hasNext())
+    if(hasNext(nnewFolder))
       nnewFolder = nnewFolder.next();
     else
       nnewFolder = newFolder.createFolder(folder.getName());
