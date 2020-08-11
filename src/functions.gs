@@ -2,7 +2,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
   var date = new Date();
   date = `${date.getFullYear()}. ${(date.getMonth()+1)}. ${date.getDate()}`;
   var configFolders = config.getParents();
-  if(!configFolders.hasNext())
+  if(!hasNext(configFolders))
   {
     console.log('config 파일에 연결된 부모 폴더가 없음. 다음 config 파일 탐색');
     return;
@@ -35,8 +35,12 @@ function categorizeFiles(config, option, filI, filProp, userMail){
 폴더 이동 : ${option.moveFolder}
 기타 파일 이동 : ${option.moveEtc}
 기타 파일 폴더 : ${option.etcName}
-테스트 모드 : ${option.testMode}`);
+테스트 모드 : ${option.testMode}
+폴더 접두사 : ${option.suffix}`);
   }
+
+  if(option.suffix == undefined)
+    option.suffix = suffixForCreatingFolders;
 
   configSheet = configSheet[0];
   var rowNumOfConfigSheet = configSheet.getLastRow();
@@ -77,25 +81,25 @@ function categorizeFiles(config, option, filI, filProp, userMail){
     }
     catch(err)
     {
-      targetFolder = folder.createFolder(`${categoryData[i][0]}${suffixForCreatingFolders}`);
+      targetFolder = folder.createFolder(`${categoryData[i][0]}${option.suffix}`);
       targetFolderID = targetFolder.getId();
       categoryData[i][1] = targetFolderID;
       if(option.testMode)
       {
         testLog[testLog.length] = new Array();
-        testLog[testLog.length-1][0] = `키워드 "${categoryData[i][0]}"에 대한 폴더가 없거나 ID가 잘못되어 새 폴더를 만듦.(새 폴더명 : ${categoryData[i][0]}${suffixForCreatingFolders})`;
+        testLog[testLog.length-1][0] = `키워드 "${categoryData[i][0]}"에 대한 폴더가 없거나 ID가 잘못되어 새 폴더를 만듦.(새 폴더명 : ${categoryData[i][0]}${option.suffix})`;
       }
-      console.log(`${categoryData[i][1]} 아이디의 폴더를 찾는 데 실패하여 새 폴더를 만듦.(새 폴더명 : ${categoryData[i][0]}${suffixForCreatingFolders}`);
+      console.log(`${categoryData[i][1]} 아이디로 새 폴더를 만듦.(새 폴더명 : ${categoryData[i][0]}${option.suffix}`);
     }
     if(targetFolderID == null || targetFolderID == undefined)       // 검색어에 해당하는 폴더 ID가 없으면 직접 만듦. 스프레드시트는 변경 불가하지만 폴더명은 임의로 변경 가능하고 폴더 이동 역시 가능
     {
-      targetFolder = folder.createFolder(`${categoryData[i][0]}${suffixForCreatingFolders}`);
+      targetFolder = folder.createFolder(`${categoryData[i][0]}${option.suffix}`);
       targetFolderID = targetFolder.getId();
       categoryData[i][1] = targetFolderID;
       if(option.testMode)
       {
         testLog[testLog.length] = new Array();
-        testLog[testLog.length-1][0] = `키워드 "${categoryData[i][0]}"에 대한 폴더가 없거나 ID가 잘못되어 새 폴더를 만듦.(새 폴더명 : ${categoryData[i][0]}${suffixForCreatingFolders})`;
+        testLog[testLog.length-1][0] = `키워드 "${categoryData[i][0]}"에 대한 폴더가 없거나 ID가 잘못되어 새 폴더를 만듦.(새 폴더명 : ${categoryData[i][0]}${option.suffix})`;
       }
     }
     if(option.moveFile)
@@ -138,7 +142,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
       try
       {
         etcFolder = DriveApp.searchFolders(`title contains "${option.etcName}" and parents in "${folderID}"`);
-        if(etcFolder.hasNext())
+        if(hasNext(etcFolder))
         {
           etcFolder = etcFolder.next();
           categoryData[categoryData.length] = new Array(3);
@@ -171,7 +175,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
       fileList = DriveApp.searchFiles(`title != "${nameOfConfigFile}" and parents in "${folderID}"`);
       if(option.testMode)
       {
-        while(fileList.hasNext())
+        while(hasNext(fileList))
         {
           var fileToMove = fileList.next();
           var isSelected = 0;
@@ -190,7 +194,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
       }
       else
       {
-        while(fileList.hasNext())
+        while(hasNext(fileList))
         {
           var fileToMove = fileList.next();
           console.log(`(기타)선택된 파일 : ${fileToMove.getName()}`);
@@ -210,7 +214,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
       folderList = folder.getFolders();
       if(option.testMode)
       {
-        while(folderList.hasNext())
+        while(hasNext(folderList))
         {
           var folderToMove = folderList.next();
           if(isFolderInCategoryData(categoryData, lengthOfCategoryData, folderIDToMove))
@@ -234,7 +238,7 @@ function categorizeFiles(config, option, filI, filProp, userMail){
       }
       else
       {
-        while(folderList.hasNext())
+        while(hasNext(folderList))
         {
           var folderToMove = folderList.next();
           var folderIDToMove = folderToMove.getId();
@@ -290,11 +294,27 @@ function categorizeFileListTest(query, targetFolder, originalFolder, testLog)
   var targetFolderName = targetFolder.getName();
   var originalFolderName = originalFolder.getName();
   fileList = DriveApp.searchFiles(query);
-  while(fileList.hasNext())
+  var go = true;
+  var errCount = 0;
+  while(go)
   {
-    var fileToMove = fileList.next();
-    testLog[testLog.length] = new Array();
-    testLog[testLog.length-1][0] = `파일 "${fileToMove.getName()}"를 "${originalFolderName}" 폴더에서 "${targetFolderName}" 폴더로 이동`;
+    try{
+      if(hasNext(fileList))
+      {
+        var fileToMove = fileList.next();
+        testLog[testLog.length] = new Array();
+        testLog[testLog.length-1][0] = `파일 "${fileToMove.getName()}"를 "${originalFolderName}" 폴더에서 "${targetFolderName}" 폴더로 이동`;
+      }
+      else
+        go = false;
+    }
+    catch(err)
+    {
+      errCount++;
+      if(errCount > 3)
+        go = false;
+      console.log(`에러 발생 : ${err}`);
+    }
   }
   
   return testLog;
@@ -304,7 +324,7 @@ function categorizeFileList(query, targetFolder, originalFolder, filProp, userMa
 {
   var count = 0;
   fileList = DriveApp.searchFiles(query);
-  while(fileList.hasNext())
+  while(hasNext(fileList))
   {
     count++;
     var fileToMove = fileList.next();
@@ -323,7 +343,9 @@ function categorizeFolderListTest(query, targetFolder, originalFolder, categoryD
   var originalFolderName = originalFolder.getName();
   
   folderList = DriveApp.searchFolders(query);
-  while(folderList.hasNext())
+  var errCount = 0;
+  var go = true;
+  while(hasNext(folderList))
   {
     var folderToMove = folderList.next();
     var folderIDToMove = folderToMove.getId();
@@ -335,7 +357,6 @@ function categorizeFolderListTest(query, targetFolder, originalFolder, categoryD
       testLog[testLog.length-1][0] = `폴더 "${folderToMove.getName()}"를 "${originalFolderName}" 폴더에서 "${targetFolderName}" 폴더로 이동`;
     }
   }
-  
   return testLog;
 }
 
@@ -343,21 +364,37 @@ function categorizeFolderList(query, targetFolder, originalFolder, categoryData,
 {
   var count = 0;
   folderList = DriveApp.searchFolders(query);
-  while(folderList.hasNext())
+  var go = true;
+  var errCount = 0;
+  while(go)
   {
-    var folderToMove = folderList.next();
-    var folderIDToMove = folderToMove.getId();
-    if(isFolderInCategoryData(categoryData, lengthOfCategoryData, folderIDToMove))
-       continue;
-    else
-    {
-      console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
-      moveFolder(folderToMove, targetFolder, filProp, userMail);
+    try{
+      if(hasNext(folderList))
+      {
+        var folderToMove = folderList.next();
+        var folderIDToMove = folderToMove.getId();
+        if(isFolderInCategoryData(categoryData, lengthOfCategoryData, folderIDToMove))
+           continue;
+        else
+        {
+          console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
+          moveFolder(folderToMove, targetFolder, filProp, userMail);
+        }
+        count++;
+        currentTime = (new Date()).getTime() / 1000;
+        if(currentTime - startTime > MAXIMUM_EXE_TIME)
+          return count;
+      }
+      else
+        go = false;
     }
-    count++;
-    currentTime = (new Date()).getTime() / 1000;
-    if(currentTime - startTime > MAXIMUM_EXE_TIME)
-      return count;
+    catch(err)
+    {
+      errCount++;
+      if(errCount > 3)
+        go = false;
+      console.log(`에러 발생 : ${err}`);
+    }
   }
   return count;
 }
@@ -365,34 +402,82 @@ function categorizeFolderList(query, targetFolder, originalFolder, categoryData,
 function moveFile(file, targetFolder, filProp, userMail)
 {
   filProp.setProperty(`${userMail}lastFileId`, file.getId());
-  try{
-    file.moveTo(targetFolder);
-  }
-  catch(err)
+  var errCount = 0;
+  while(errCount<3)
   {
-    console.log(`에러 ${err} 발생으로 다시 시도`);
-    moveFile(file, targetFolder, filProp, userMail);
+    try{
+      file.moveTo(targetFolder);
+      return 0;
+    }
+    catch(err)
+    {
+      errCount++;
+      console.log(`에러 ${err} 발생으로 다시 시도`);
+    }
   }
+  console.log(`에러 3회 발생으로 최종 실패`);
+  return 1;    // 에러 발생 시 1 반환
 }
 
 function moveFileR(file, targetFolder)
 {
-  file.moveTo(targetFolder);
+  var errCount = 0;
+  while(errCount<3)
+  {
+    try{
+      file.moveTo(targetFolder);
+      return 0;
+    }
+    catch(err)
+    {
+      errCount++;
+      console.log(`에러 ${err} 발생으로 다시 시도`);
+    }
+  }
+  console.log(`에러 3회 발생으로 최종 실패`);
+  return 1;    // 에러 발생 시 1 반환
 }
 
 function moveFolder(folder, targetFolder, filProp, userMail)
 {
   if(folder == targetFolder)
     return;
+  var errCount = 0;
   filProp.setProperty(`${userMail}lastFolderId`, folder.getId());
-  try{
-    folder.moveTo(targetFolder);
-  }
-  catch(err)
+  while(errCount<3)
   {
-    console.log(`에러 ${err} 발생으로 다시 시도`);
-    moveFolder(folder, targetFolder, filProp, userMail);
+    try{
+      folder.moveTo(targetFolder);
+      return 0;
+    }
+    catch(err)
+    {
+      errCount++;
+      console.log(`에러 ${err} 발생으로 다시 시도`);
+    }
   }
+  console.log(`에러 3회 발생으로 최종 실패`);
+  return 1;    // 에러 발생 시 1 반환
+}
+
+function hasNext(item)
+{
+  var result = 1;
+  var errCount = 0;
+  while(errCount<3)
+  {
+    try{
+      result = item.hasNext();
+      return result;
+    }
+    catch(err)
+    {
+      errCount++;
+      console.log(`에러 ${err} 발생으로 다시 시도`);
+    }
+  }
+  console.log(`에러 3회 발생으로 최종 실패`);
+  return 1;    // 에러 발생 시 1 반환
 }
 
 function isFolderInCategoryData(categoryData, lengthOfCategoryData, folderID)
@@ -405,13 +490,13 @@ function isFolderInCategoryData(categoryData, lengthOfCategoryData, folderID)
 }
 
 function removeFiles(removeFileList, fileNameToRemove){
-  while(removeFileList.hasNext())
+  while(hasNext(removeFileList))
   {
     var fileToRemove = removeFileList.next();
     if(fileToRemove.getName() != fileNameToRemove)
       continue;
     var parentFolder = fileToRemove.getParents();
-    if(parentFolder.hasNext())
+    if(hasNext(parentFolder))
     {
       console.log(`${getDirectory(fileToRemove)} 파일 삭제 중`);
       parentFolder = parentFolder.next();
@@ -422,12 +507,12 @@ function removeFiles(removeFileList, fileNameToRemove){
       var dirFolder;
       var i=0;
       var j=0;
-      while(dirFiles.hasNext() && i<2)
+      while(hasNext(dirFiles) && i<2)
       {
         i++;
         dirFile = dirFiles.next();
       }
-      while(dirFolders.hasNext() && j == 0)
+      while(hasNext(dirFolders) && j == 0)
       {
         j++;
         dirFolder = dirFolders.next();
@@ -465,7 +550,7 @@ function removeFiles(removeFileList, fileNameToRemove){
 function getDirectory(file){
   var directory = '';
   var parent = file.getParents();
-  if(parent.hasNext())
+  if(hasNext(parent))
     return getDirectory(parent.next()) + '/' + file.getName();
   else
     return file.getName();
