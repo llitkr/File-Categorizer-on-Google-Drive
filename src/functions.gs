@@ -477,7 +477,7 @@ function hasNext(item)
     }
   }
   console.log(`에러 3회 발생으로 최종 실패`);
-  return 1;    // 에러 발생 시 1 반환
+  return 0;    // 에러 발생 시 0 반환
 }
 
 function isFolderInCategoryData(categoryData, lengthOfCategoryData, folderID)
