@@ -3,9 +3,7 @@ function trigger(option) {
   var userMail = `${Session.getActiveUser().getEmail()}-`;
   var filRun = filProp.getProperty(`${userMail}filRun`);
   var configToken = 0;
-  var fileToken = 0;
   var i;
-  var propConfigList;
   
   switch(filRun)
   {
