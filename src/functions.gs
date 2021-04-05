@@ -12,8 +12,6 @@ function categorizeFiles(config, option, filI, filProp, userMail){
   var folderID = folder.getId();
   var targetFolder;
   var targetFolderID;
-  var result = 0;
-  var configID = config.getId();
 
   var testLog = [[`${date}에 시행한 테스트 로그`]];
   
@@ -50,17 +48,58 @@ function categorizeFiles(config, option, filI, filProp, userMail){
   var lengthOfCategoryData = categoryData.length;
   for(i=filI; i<lengthOfCategoryData; i++)
   {
-    var qr;     // 검색 시 활용할 쿼리
-    if(categoryData[i][0].includes('"'))
+    var qr = '';     // 검색 시 활용할 쿼리
+    if(categoryData[i][0].includes('"'))    // 키워드가 여러 개일 때
     {
-      qr = '';
+      qr = '(';
       var qrs = categoryData[i][0].split('"');
-      qr += qrs[0];
-      for(var k=1; k<qrs.length; k++)
-        qr += `" or title contains "${qrs[k]}`;
+      for(var k=0; k<qrs.length; k++)
+      {
+        if(!k)
+        {
+          var qrsm = qrs[k].split(' ');
+          for(var l=0; l<qrsm.length; l++)
+          {
+            if(!l)
+              qr += '(title contains "' + qrsm[l] + '"';
+            else
+            {
+              qr += ` and title contains "${qrsm[l]}"`;
+            }
+          }
+        }
+        else
+        {
+          var qrsm = qrs[k].split(' ');
+          for(var l=0; l<qrsm.length; l++)
+          {
+            if(!l)
+              qr += ` or (title contains "${qrsm[l]}"`;
+            else
+            {
+              qr += ` and title contains "${qrsm[l]}"`;
+            }
+          }
+        }
+        qr += ')';
+      }
+      qr += ')';
     }
-    else
-      qr = categoryData[i][0];
+    else      // 키워드가 하나일 때
+    {
+      var qrsm = categoryData[i][0].split(' ');
+      qr = '(';
+        for(var l=0; l<qrsm.length; l++)
+        {
+          if(!l)
+            qr += `title contains "${qrsm[l]}"`;
+          else
+          {
+            qr += ` and title contains "${qrsm[l]}"`;
+          }
+        }
+      qr += ')';
+    }
     var folderCount = 0;
     var fileCount = 0;
     if(categoryData[i][0] == 'etc')
@@ -104,14 +143,14 @@ function categorizeFiles(config, option, filI, filProp, userMail){
     }
     if(option.moveFile)
       if(option.testMode)
-        testLog = categorizeFileListTest(`(title contains "${qr}") and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder, testLog);
+        testLog = categorizeFileListTest(`${qr} and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder, testLog);
       else
-        fileCount = categorizeFileList(`(title contains "${qr}") and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder, filProp, userMail);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
+        fileCount = categorizeFileList(`${qr} and title != "${nameOfConfigFile}" and parents in "${folderID}"`, targetFolder, folder, filProp, userMail);  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 파일은 검색되지 않음)
     if(option.moveFolder)
       if(option.testMode)
-        testLog = categorizeFolderListTest(`(title contains "${qr}") and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData, testLog);
+        testLog = categorizeFolderListTest(`${qr} and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData, testLog);
       else
-        folderCount = categorizeFolderList(`(title contains "${qr}") and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData, filProp, userMail)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
+        folderCount = categorizeFolderList(`${qr} and parents in "${folderID}"`, targetFolder, folder, categoryData, lengthOfCategoryData, filProp, userMail)  // 검색 시 붙어있는 단어일 경우 앞부분(접두어)만을 검색함에 유의.(예: "2일" 키워드로 검색 시 "1박2일" 폴더는 검색되지 않음)
     if((fileCount || folderCount) && option.testMode != true)
       categoryData[i][2] = `${date}에 마지막으로 ${fileCount}개의 파일과 ${folderCount}개의 폴더를 이동`;
     currentTime = (new Date()).getTime() / 1000;
@@ -294,28 +333,13 @@ function categorizeFileListTest(query, targetFolder, originalFolder, testLog)
   var targetFolderName = targetFolder.getName();
   var originalFolderName = originalFolder.getName();
   fileList = DriveApp.searchFiles(query);
-  var go = true;
-  var errCount = 0;
-  while(go)
+
+  while(hasNext(fileList))
   {
-    try{
-      if(hasNext(fileList))
-      {
-        var fileToMove = fileList.next();
-        testLog[testLog.length] = new Array();
-        testLog[testLog.length-1][0] = `파일 "${fileToMove.getName()}"를 "${originalFolderName}" 폴더에서 "${targetFolderName}" 폴더로 이동`;
-      }
-      else
-        go = false;
+    var fileToMove = fileList.next();
+    testLog[testLog.length] = new Array();
+    testLog[testLog.length-1][0] = `파일 "${fileToMove.getName()}"를 "${originalFolderName}" 폴더에서 "${targetFolderName}" 폴더로 이동`;
     }
-    catch(err)
-    {
-      errCount++;
-      if(errCount > 3)
-        go = false;
-      console.log(`에러 발생 : ${err}`);
-    }
-  }
   
   return testLog;
 }
@@ -328,7 +352,7 @@ function categorizeFileList(query, targetFolder, originalFolder, filProp, userMa
   {
     count++;
     var fileToMove = fileList.next();
-    console.log(`파일:"${fileToMove.getName()}" 선택 및 이동`);
+    console.log(`파일:"${fileToMove.getName()}" 선택 및 "${targetFolder.getName()}(${targetFolder.getId()})" 폴더로 이동`);
     moveFile(fileToMove, targetFolder, filProp, userMail);
     currentTime = (new Date()).getTime() / 1000;
     if(currentTime - startTime > MAXIMUM_EXE_TIME)
@@ -341,10 +365,8 @@ function categorizeFolderListTest(query, targetFolder, originalFolder, categoryD
 {
   var targetFolderName = targetFolder.getName();
   var originalFolderName = originalFolder.getName();
-  
+
   folderList = DriveApp.searchFolders(query);
-  var errCount = 0;
-  var go = true;
   while(hasNext(folderList))
   {
     var folderToMove = folderList.next();
@@ -364,37 +386,21 @@ function categorizeFolderList(query, targetFolder, originalFolder, categoryData,
 {
   var count = 0;
   folderList = DriveApp.searchFolders(query);
-  var go = true;
-  var errCount = 0;
-  while(go)
+  while(hasNext(folderList))
   {
-    try{
-      if(hasNext(folderList))
-      {
-        var folderToMove = folderList.next();
-        var folderIDToMove = folderToMove.getId();
-        if(isFolderInCategoryData(categoryData, lengthOfCategoryData, folderIDToMove))
-           continue;
-        else
-        {
-          console.log(`폴더:"${folderToMove.getName()}" 선택 및 이동`);
-          moveFolder(folderToMove, targetFolder, filProp, userMail);
-        }
-        count++;
-        currentTime = (new Date()).getTime() / 1000;
-        if(currentTime - startTime > MAXIMUM_EXE_TIME)
-          return count;
-      }
-      else
-        go = false;
-    }
-    catch(err)
+    var folderToMove = folderList.next();
+    var folderIDToMove = folderToMove.getId();
+    if(isFolderInCategoryData(categoryData, lengthOfCategoryData, folderIDToMove))
+       continue;
+    else
     {
-      errCount++;
-      if(errCount > 3)
-        go = false;
-      console.log(`에러 발생 : ${err}`);
+      console.log(`폴더:"${folderToMove.getName()}" 선택 및 "${targetFolder.getName()}(${targetFolder.getId()})" 폴더로 이동`);
+      moveFolder(folderToMove, targetFolder, filProp, userMail);
     }
+    count++;
+    currentTime = (new Date()).getTime() / 1000;
+    if(currentTime - startTime > MAXIMUM_EXE_TIME)
+      return count;
   }
   return count;
 }
